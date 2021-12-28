@@ -1,12 +1,105 @@
-Function FUNCIFS(func As String, rng As Range, ParamArray arguments() As Variant) As Double
+Function ARRAYIFS(func As String, wCol As Integer, rng As Variant, ParamArray arguments() As Variant) As Double
+'ARRAYIFS ( function , column , array , col1 , arg1 [ ,col2, arg2].. )
+'ARRAYIFS ( "sum" , 3 , unpivotdata() , 1 , "January" , 2 , ">0" ) )
+Dim uB As Double, arg As Double, args As Double, arrayLen As Double, i As Double, l As Double, j As Double, ac As Double, irc As Double 'include row count to initialize arrya
+Dim booleanArray() As Variant
+Dim valueArray() As Double
+arrayLen = UBound(rng) - 1
+ReDim booleanArray(arrayLen)
+For l = 0 To arrayLen 'initialize array to TRUE
+    booleanArray(l) = True
+Next
+uB = UBound(arguments)
+args = uB - 1
+For arg = 0 To args Step 2 'set the boolean map for matching criteria across all criteria
+    For j = 0 To arrayLen 'loop through each array element of the passed array
+        If booleanArray(j) = True Then
+            If TypeName(rng(j + 1, arguments(arg))) = "Double" Then
+                If TypeName(arguments(arg + 1)) = "String" Then
+                    If Not Evaluate(rng(j + 1, arguments(arg)) & arguments(arg + 1)) Then
+                        booleanArray(j) = False
+                    End If
+                Else
+                    If Not Evaluate(rng(j + 1, arguments(arg)) = arguments(arg + 1)) Then
+                        booleanArray(j) = False
+                    End If
+                End If
+            Else
+                If Not UCase(rng(j + 1, arguments(arg))) Like UCase(arguments(arg + 1)) Then
+                    booleanArray(j) = False
+                End If
+            End If
+            If booleanArray(j) = False Then
+                irc = irc + 1
+            End If
+        End If
+    Next
+Next
+ReDim valueArray(UBound(booleanArray) - irc) 'initialize array for function arguments
+ac = 0
+For arg = 0 To arrayLen 'use boolean map to build array
+    If booleanArray(arg) = True Then
+        valueArray(ac) = rng(arg + 1, wCol)
+        ac = ac + 1
+    End If
+Next
+Select Case LCase(func) 'add functions as required here
+    Case "sum": ARRAYIFS = WorksheetFunction.Sum(valueArray)
+    Case "stdev": ARRAYIFS = WorksheetFunction.StDev(valueArray)
+    Case "average": ARRAYIFS = WorksheetFunction.Average(valueArray)
+    Case "count": ARRAYIFS = WorksheetFunction.Count(valueArray)
+    'Case "NAME HERE": ARRAYIFS = WorksheetFunction.NAME_HERE(valueArray) '<==Copy, Edit, Uncomment
+End Select
+End Function
+
+Function ASG(sNum As Double, enNum As Double, Optional nStep As Double) As Variant
+'ASG - Array Sequence Genetator; generate any desired array sequence
+'ASG ( StartNumber , EndNumber , optional ValueStep )
+    'https://www.reddit.com/u/excelevator
+    'https://old.reddit.com/r/excelevator
+    'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+If nStep = 0 Then
+    nStep = 1 'default step is 1
+End If
+Dim rArray() As Double
+Dim i As Double, j As Double: j = 0
+ReDim rArray(WorksheetFunction.RoundDown(Abs(sNum - enNum) / Abs(nStep), 0))
+For i = sNum To enNum Step nStep
+    rArray(j) = Round(i, 10)
+    j = j + 1
+    i = Round(i, 10) ' to clear up Excel rounding error and interuption of last loop on occasion
+Next
+ASG = rArray()
+End Function
+Function CRNG(ParamArray arguments() As Variant) As Variant
   'https://www.reddit.com/u/excelevator
   'https://old.reddit.com/r/excelevator
   'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
-'FUNCIFS ( "function" , value_range , criteria_range1 , criteria1 , [critera_range2 , criteria2]...)
-Dim uB As Long, arg As Long, args As Long, i As Long, l As Long, irc As Long 'include row count to initialize arrya
-Dim booleanArray() As Boolean
-Dim valueArray() As Double
-i = rng.Count - 1
+'CRNG( range1 [, range2, range3....])
+Dim uB As Double: uB = UBound(arguments)
+Dim str() As Variant, rdp As Long, cell As Range, rcells As Long
+Dim arr As Long: arr = 0
+For rcells = 0 To uB
+rdp = rdp + arguments(rcells).Count + IIf(rcells = 0, -1, 0)
+ReDim Preserve str(rdp)
+    For Each cell In arguments(rcells)
+        str(arr) = cell.Value
+         arr = arr + 1
+    Next
+Next
+CRNG = str()
+End Function
+Function FRNG(rng As Range, ParamArray arguments() As Variant) As Variant
+'FRNG ( value_range , criteria_range1 , criteria1 , [critera_range2 , criteria2]...)
+'return a filtered array of values for IFS functionality
+'https://www.reddit.com/u/excelevator
+'https://old.reddit.com/r/excelevator
+'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Dim uB As Long, arg As Long, args As Long
+Dim i As Long, irc As Long, l As Long, ac As Long
+Dim booleanArray() As Boolean, FRNGtr() As Double
+On Error Resume Next
+i = (rng.Rows.Count * rng.Columns.Count) - 1
 ReDim booleanArray(i)
 For l = 0 To i 'initialize array to TRUE
     booleanArray(l) = True
@@ -39,42 +132,333 @@ l = 0
     l = l + 1
     Next
 Next
-ReDim valueArray(UBound(booleanArray) - irc) 'initialize array for function arguments
+ReDim FRNGtr(UBound(booleanArray) - irc) 'initialize array for function arguments
 ac = 0
 For arg = 0 To i 'use boolean map to build array for stdev
     If booleanArray(arg) = True Then
-        valueArray(ac) = rng(arg + 1).Value 'build the value array for STDEV
+        FRNGtr(ac) = rng(arg + 1).Value 'build the value array for MAX
         ac = ac + 1
     End If
 Next
-Select Case func 'add functions as required here
-    Case "sum": FUNCIFS = WorksheetFunction.Sum(valueArray)
-    Case "stdev": FUNCIFS = WorksheetFunction.StDev(valueArray)
-    'Case "NAME HERE": FUNCIFS = WorksheetFunction.NAME HERE(valueArray) '<==Copy, Edit, Uncomment
-    'where NAME HERE is the function to call
-End Select
+FRNG = FRNGtr()
 End Function
-Function IFEQUAL(arg As Variant, ans As Variant, Optional neg As Variant)
-'IFEQUAL ( formula, expected_result , optional otherwise ) :V2.5
+Function CELLARRAY(rng As Variant, ParamArray arguments() As Variant)
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+'CELLARRAY( range, *delimiter[s], [optional] "/h", [optional] "/u")
+'v1.5 rewrote large parts after fresh revisit - 20190124
+'-----------
+Dim orientVert As Boolean: orientVert = True ' flag to orient the return array: default is verticle array
+Dim arl As Long ' count of elements as array of cells selected
+Dim tmpStr As Variant 'build cell contents for conversion to array
+Dim str() As String 'the array string
+Dim uB As Long: uB = UBound(arguments)
+Dim arg As Long, cell As Range, i As Double ', ii As Double
+Dim delim As String: delim = "ì" 'will need to be changed if this is your delimiter or character in the data
+Dim Unque As Boolean: Unque = False 'return unique data switch
+
+'----generate string of delimited values
+If TypeName(rng) = "String" Then 'for string array
+    tmpStr = rng & delim
+Else
+    For Each cell In rng 'for range
+        tmpStr = tmpStr + CStr(cell.Value) & delim
+    Next
+End If
+'--check for switches for horizontal and unique and convert as required
+For arg = 0 To uB
+    If UCase(arguments(arg)) = "/H" Then
+        orientVert = False
+    ElseIf UCase(arguments(arg)) = "/U" Then
+        Unque = True
+    Else '--convert delimiters listed to single delimiter for split function
+        tmpStr = Replace(tmpStr, arguments(arg), delim)
+    End If
+Next
+'--remove first and last delimiter at front and end of text if exists
+If Left(tmpStr, 1) = delim Then tmpStr = Right(tmpStr, Len(tmpStr) - 1)
+If Right(tmpStr, 1) = delim Then tmpStr = Left(tmpStr, Len(tmpStr) - 1)
+
+'------Split the delimited string into an array
+str = Split(tmpStr, delim)
+
+'-----get required loop count, for array or cell selection size
+arl = Len(tmpStr) - Len(WorksheetFunction.Substitute(tmpStr, delim, ""))
+
+'------------put values into Collection to make unique if /u switch
+If Unque Then
+    Dim coll As Collection
+    Dim cl As Long
+    Dim c As Variant
+    Set coll = New Collection
+    On Error Resume Next
+    For i = 0 To arl
+        c = Trim(str(i))
+        c = IIf(IsNumeric(c), c * 1, c) 'load numbers as numbers
+        coll.Add c, CStr(IIf(Unque, c, i)) 'load unique values if flag is [/U]nique
+    Next
+    cl = coll.Count
+
+    '--------empty Collection into array for final function return
+    Dim tempArr() As Variant
+    ReDim tempArr(cl - 1)
+    For i = 0 To cl - 1
+        tempArr(i) = coll.Item(i + 1) 'get the final trimmed element values
+    Next
+        CELLARRAY = IIf(orientVert, WorksheetFunction.Transpose(tempArr), tempArr)
+    Exit Function
+End If
+'for non unique return the whole array of values
+CELLARRAY = IIf(orientVert, WorksheetFunction.Transpose(str), str)
+End Function
+
+Function RETURNCOLUMNS(ParamArray arguments() As Variant) As Variant
+'RETURNCOLUMNS ( [row-limit] , RANGE , col1 [ , col2 , .. ] ) : v1.31
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Dim rtnArray() As Variant
+Dim uB As Integer, i As Double, ii As Double, rc As Long, starti As Integer
+starti = IIf(TypeName(arguments(0)) = "Double", 1, 0)
+uB = UBound(arguments)
+If TypeName(arguments(starti)) = "Range" Then
+    rc = arguments(starti).Rows.Count
+Else
+    rc = UBound(arguments(starti))
+End If
+rc = IIf(starti, WorksheetFunction.Min(arguments(0), rc), rc)
+ReDim rtnArray(rc - 1, uB - 1 - starti)
+For i = 0 To uB - 1 - starti
+    For ii = 0 To rc - 1
+        rtnArray(ii, i) = arguments(starti)(ii + 1, arguments(i + 1 + starti))
+    Next
+Next
+RETURNCOLUMNS = rtnArray()
+End Function
+Function REPTX(strRng As Variant, repRng As Variant, Optional horizontal As Boolean)
+'REPTX ( text ,  repeat_x_times [,return_horizonal_array] )
 'https://www.reddit.com/u/excelevator
 'https://old.reddit.com/r/excelevator
 'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
-Dim a As Variant: a = arg
-Dim b As Variant: b = ans
-Dim c As Variant: c = neg
-Dim comp As Boolean: comp = InStr(1, "<>=", Left(b, 1))
-Dim eq As Integer: eq = InStr(1, "<>", Left(b, 2)) * 2
-If TypeName(a) = "Double" And _
-    TypeName(b) = "String" And comp Then
-            IFEQUAL = IIf(Evaluate(a & b), a, c)
-            Exit Function
-ElseIf TypeName(a) = "String" And _
-            TypeName(b) = "String" And _
-                (comp Or eq) Then
-                    IFEQUAL = IIf(Evaluate("""" & a & """" & Left(b, WorksheetFunction.Max(comp, eq)) & """" & Right(b, Len(b) - WorksheetFunction.Max(comp, eq)) & """"), a, c)
-                    Exit Function
+Dim rALen As Double 'the length of the arguments
+If TypeName(repRng) = "Variant()" Then
+    rALen = UBound(repRng) - 1
+Else
+    rALen = repRng.Count - 1
 End If
-IFEQUAL = IIf(a = b, a, c)
+Dim rArray()
+ReDim rArray(1, rALen) 'the process array
+'get the required numner of rows for the final array
+Dim ai As Integer: ai = 0
+Dim fALen As Double: fALen = 0
+Dim fAALen As Integer: fAALen = 0
+Dim v As Variant
+'& insert the word repeat value to the process array
+For Each v In repRng
+    fALen = fALen + v
+    rArray(0, ai) = v
+    ai = ai + 1
+    fAALen = fAALen + v
+Next
+Dim fAArray() As Variant 'the final result array
+Dim i As Double, ii As Double
+ReDim fAArray(fAALen - 1)
+'put the words in the process array
+i = 0
+For Each v In strRng
+    rArray(1, i) = v
+    i = i + 1
+    If i = ai Then Exit For
+Next
+i = 0
+ai = 0
+For i = 0 To rALen
+    For ii = 0 To rArray(0, i) - 1
+        fAArray(ai) = rArray(1, i)
+        ai = ai + 1
+    Next
+Next
+REPTX = IIf(horizontal, fAArray, WorksheetFunction.Transpose(fAArray))
 End Function
+Function SPLITIT(rng As Variant, del As String, elmt As Variant, Optional txt As Variant)
+'SPLITIT( range , delimiter , return_element, [optional] txt ) v1.2
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Dim loopit As Boolean, cell As Range, str As String, i As Double, trimmit As Boolean, relmt As Double
+If IsArray(elmt) Then relmt = elmt(1) Else relmt = elmt
+If Not IsMissing(txt) Then
+  loopit = True
+End If
+If TypeName(rng) = "Variant()" Then
+    SPLITIT = WorksheetFunction.Transpose(rng)(relmt)
+    Exit Function
+ElseIf TypeName(rng) <> "String" Then
+   For Each cell In rng
+       If Trim(cell) <> "" Then str = str & WorksheetFunction.Trim(cell) & del
+   Next
+   trimmit = True
+Else
+    str = WorksheetFunction.Trim(rng)
+End If
+Dim a() As String
+a = Split(IIf(trimmit, Left(str, Len(str) - Len(del)), str), del)
+If loopit Then
+    For i = 0 To UBound(a)
+        If Trim(a(i)) = txt Then
+            SPLITIT = i + 1
+            Exit Function
+        End If
+    Next
+End If
+SPLITIT = a(relmt - 1)
+End Function
+Function STACKCOLUMNS(grp As Integer, ParamArray arguments() As Variant) As Variant
+'STACKCOLUMNS ( group , col1 [ , col2 , .. ] ) v1.31 - take range input for return, limit rows
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Dim rtnArray() As Variant
+Dim uB As Integer, i As Double, ii As Double, j As Double, rRows As Double, rCols As Double
+Dim rowPaste As Long: rowPaste = 0 'paste array group index
+Dim newPasteRow As Double
+Dim colCount As Integer
+Dim aRows As Double
+uB = UBound(arguments) 'ubound() rows, ubount( ,2) columns, array Variant()
+For i = 0 To uB 'get final array size
+If TypeName(arguments(i)) = "Variant()" Then
+    aRows = aRows + (UBound(arguments(i)) / grp * UBound(arguments(i), 2))
+Else
+    aRows = aRows + (arguments(i).Rows.Count / grp * arguments(i).Columns.Count)
+End If
 
+Next
+ReDim Preserve rtnArray(aRows - 1, grp - 1) 'intialise array
+'-----------------------------------
+'lets get these loops sorted now....
+For i = 0 To uB 'need to loop for either array or range
 
+If TypeName(arguments(i)) = "Variant()" Then
+    rRows = UBound(arguments(i))
+    rCols = UBound(arguments(i), 2)
+Else
+    rRows = arguments(i).Rows.Count
+    rCols = arguments(i).Columns.Count
+End If
+    For j = 1 To rCols
+        colCount = colCount + 1
+        rowPaste = newPasteRow
+        '-------------------------
+        For ii = 1 To rRows
+            rtnArray(rowPaste, colCount - 1) = arguments(i)(ii, j)
+            rowPaste = rowPaste + 1
+        Next
+        '-------------------------
+        If colCount = grp Then
+            colCount = 0
+            newPasteRow = newPasteRow + rRows
+            rowPaste = newPasteRow
+        End If
+    Next
+Next
+STACKCOLUMNS = rtnArray()
+End Function
+Function UNPIVOTCOLUMNS(rng As Range, cName As Variant, ParamArray arguments() As Variant) As Variant
+'UNPIVOTCOLUMNS ( range , colName , col1/range1 [ , col2/range2 , .. ] )
+  'v2.13 take range arguments for all arguments, allow all columns to unpivot
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Dim rtnArray() As Variant
+Dim i As Double, j As Double, uB As Integer: uB = -1
+Dim colCount As Integer: colCount = rng.Columns.Count
+Dim rowCount As Double: rowCount = rng.Rows.Count
+Dim unpivotedColumnsCount As Integer
+Dim newrowcount As Double
+Dim printColumns As String
+Dim pivotColumns As String
+Dim printColsArray() As String
+Dim pivotColsArray() As String
+Dim lastElement As Integer
+For i = 0 To UBound(arguments) 'get the columns to unpivot
+    If TypeName(arguments(i)) = "Range" Then
+        For Each cell In arguments(i).Columns
+            pivotColumns = pivotColumns & (cell.column - (rng.Cells(1, 1).column - 1)) & "|"
+            uB = uB + 1
+        Next
+    Else
+        pivotColumns = pivotColumns & arguments(i) & "|"
+        uB = uB + 1
+    End If
+Next
+pivotColsArray = Split(Left(pivotColumns, Len(pivotColumns) - 1), "|")
+headerColumnsCounts = colCount - (uB + 2)
+unpivotedColumnsCount = uB - uB + 2
+newrowcount = (rowCount) + (rowCount - 1) * uB
+lastElement = headerColumnsCounts + unpivotedColumnsCount
+ReDim Preserve rtnArray(newrowcount - 1, lastElement)   'intialise return array
+'build array header and get column population index for unpivot
+Dim pi As Integer: pi = 0 'param array argument index
+Dim aH As Integer: aH = 0 'new array header index
+rtnArray(0, lastElement - 1) = cName
+rtnArray(0, lastElement) = "Value"
+For j = 1 To colCount 'get the header row populated
+    If j <> pivotColsArray(WorksheetFunction.Min(pi, uB)) Then
+        rtnArray(0, aH) = rng.Cells(1, j)
+        aH = aH + 1
+        printColumns = printColumns & j & "|"
+    Else
+        pi = pi + 1
+    End If
+Next
+'--------------------end header build
+'---get columns index to print and process
+If printColumns <> "" Then
+printColsArray = Split(Left(printColumns, Len(printColumns) - 1), "|")
+
+'-----------------------------------
+'------loop generate the non-pivot duplicate values in the rows
+Dim r As Integer, c As Integer, irow As Double: c = 0 'row and column counters
+For Each printcolumn In printColsArray 'loop through columns
+    r = 1 'populate array row
+    For irow = 2 To rowCount 'loop through source rows
+        For x = 0 To uB
+            rtnArray(r, c) = rng.Cells(irow, --printcolumn)
+            r = r + 1
+        Next
+    Next
+    c = c + 1
+Next
+End If
+'-----------------------------------
+'------loop generate the unpivot values in the rows
+r = 1: c = 0
+For cell = 1 To newrowcount - 1
+    rtnArray(cell, lastElement - 1) = rng.Cells(1, --pivotColsArray(c)).Value
+    rtnArray(cell, lastElement) = rng.Cells(r + 1, --pivotColsArray(c)).Value
+    If c = uB Then c = 0: r = r + 1 Else c = c + 1
+Next
+UNPIVOTCOLUMNS = rtnArray()
+End Function
+Function VRNG(ParamArray arguments() As Variant) As Variant
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Dim uB As Integer: uB = UBound(arguments)
+Dim str() As Variant
+Dim cell As Range, column As Range
+Dim arg As Integer, i As Double: i = 0
+Dim cCount As Double: cCount = -1
+For arg = 0 To uB
+cCount = cCount + arguments(arg).Count
+ReDim Preserve str(cCount)
+    For Each column In arguments(arg).Columns
+        For Each cell In column.Cells
+            str(i) = cell.Value
+            i = i + 1
+        Next
+    Next
+Next
+VRNG = WorksheetFunction.Transpose(str())
+End Function
