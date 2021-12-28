@@ -1,0 +1,80 @@
+Function FUNCIFS(func As String, rng As Range, ParamArray arguments() As Variant) As Double
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+'FUNCIFS ( "function" , value_range , criteria_range1 , criteria1 , [critera_range2 , criteria2]...)
+Dim uB As Long, arg As Long, args As Long, i As Long, l As Long, irc As Long 'include row count to initialize arrya
+Dim booleanArray() As Boolean
+Dim valueArray() As Double
+i = rng.Count - 1
+ReDim booleanArray(i)
+For l = 0 To i 'initialize array to TRUE
+    booleanArray(l) = True
+Next
+uB = UBound(arguments)
+args = uB - 1
+For arg = 0 To args Step 2 'set the boolean map for matching criteria across all criteria
+l = 0
+    For Each cell In arguments(arg)
+    If booleanArray(l) = True Then
+        If TypeName(cell.Value2) = "Double" Then
+            If TypeName(arguments(arg + 1)) = "String" Then
+                If Not Evaluate(cell.Value2 & arguments(arg + 1)) Then
+                    booleanArray(l) = False
+                End If
+            Else
+                If Not Evaluate(cell.Value = arguments(arg + 1)) Then
+                    booleanArray(l) = False
+                End If
+            End If
+        Else
+            If Not UCase(cell.Value) Like UCase(arguments(arg + 1)) Then
+                booleanArray(l) = False
+            End If
+        End If
+        If booleanArray(l) = False Then
+            irc = irc + 1
+        End If
+    End If
+    l = l + 1
+    Next
+Next
+ReDim valueArray(UBound(booleanArray) - irc) 'initialize array for function arguments
+ac = 0
+For arg = 0 To i 'use boolean map to build array for stdev
+    If booleanArray(arg) = True Then
+        valueArray(ac) = rng(arg + 1).Value 'build the value array for STDEV
+        ac = ac + 1
+    End If
+Next
+Select Case func 'add functions as required here
+    Case "sum": FUNCIFS = WorksheetFunction.Sum(valueArray)
+    Case "stdev": FUNCIFS = WorksheetFunction.StDev(valueArray)
+    'Case "NAME HERE": FUNCIFS = WorksheetFunction.NAME HERE(valueArray) '<==Copy, Edit, Uncomment
+    'where NAME HERE is the function to call
+End Select
+End Function
+Function IFEQUAL(arg As Variant, ans As Variant, Optional neg As Variant)
+'IFEQUAL ( formula, expected_result , optional otherwise ) :V2.5
+'https://www.reddit.com/u/excelevator
+'https://old.reddit.com/r/excelevator
+'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Dim a As Variant: a = arg
+Dim b As Variant: b = ans
+Dim c As Variant: c = neg
+Dim comp As Boolean: comp = InStr(1, "<>=", Left(b, 1))
+Dim eq As Integer: eq = InStr(1, "<>", Left(b, 2)) * 2
+If TypeName(a) = "Double" And _
+    TypeName(b) = "String" And comp Then
+            IFEQUAL = IIf(Evaluate(a & b), a, c)
+            Exit Function
+ElseIf TypeName(a) = "String" And _
+            TypeName(b) = "String" And _
+                (comp Or eq) Then
+                    IFEQUAL = IIf(Evaluate("""" & a & """" & Left(b, WorksheetFunction.Max(comp, eq)) & """" & Right(b, Len(b) - WorksheetFunction.Max(comp, eq)) & """"), a, c)
+                    Exit Function
+End If
+IFEQUAL = IIf(a = b, a, c)
+End Function
+
+
