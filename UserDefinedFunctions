@@ -1,0 +1,785 @@
+Function TEXTJOIN(delim As String, ie As Boolean, ParamArray arguments() As Variant) As Variant 'v2_02
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+'TEXTJOIN( delimiter , ignore_empty , "value"/range, ["value"/range]..)
+'See Microsoft TEXTJOIN Helpfile
+Dim tmpStr As String 'build cell contents for conversion to array
+Dim argType As String, uB As Double, arg As Double, cell As Variant
+uB = UBound(arguments)
+For arg = 0 To uB
+argType = TypeName(arguments(arg))
+If argType = "Range" Or argType = "Variant()" Then
+    For Each cell In arguments(arg)
+        If ie = True And cell = "" Then
+            'do nothing
+        Else
+            tmpStr = tmpStr & CStr(cell) & delim
+        End If
+    Next
+Else
+    If ie = True And CStr(arguments(arg)) = "" Then
+        'do nothing
+    Else
+        tmpStr = tmpStr & CStr(arguments(arg)) & delim
+    End If
+End If
+Next
+If argType = "Error" Then
+    TEXTJOIN = CVErr(xlErrNA)
+Else
+    tmpStr = IIf(tmpStr = "", delim, tmpStr) 'fill for no values to avoid error below
+    TEXTJOIN = Left(tmpStr, Len(tmpStr) - Len(delim))
+End If
+End Function
+Function CONCAT(ParamArray arguments() As Variant) As Variant
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Dim tmpStr As String 'build cell contents for conversion to array
+Dim argType As String, uB As Double, arg As Double, cell As Variant
+uB = UBound(arguments)
+For arg = 0 To uB
+argType = TypeName(arguments(arg))
+If argType = "Range" Or argType = "Variant()" Then
+    For Each cell In arguments(arg)
+            tmpStr = tmpStr & CStr(cell)
+    Next
+Else
+    tmpStr = tmpStr & CStr(arguments(arg))
+End If
+Next
+If argType = "Error" Then
+    CONCAT = CVErr(xlErrNA)
+Else
+    CONCAT = tmpStr
+End If
+End Function
+Function IFS(ParamArray arguments() As Variant)
+'https://www.reddit.com/u/excelevator
+'https://old.reddit.com/r/excelevator
+'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Dim i As Long
+Dim j As Long
+Dim a As Long
+Dim c As Integer
+Dim k As Integer
+i = LBound(arguments)
+j = UBound(arguments)
+k = (j + 1) / 2
+c = 1
+If WorksheetFunction.IsOdd(j + 1) Then
+    IFS = CVErr(xlErrValue)
+End If
+For a = 1 To k
+    If arguments(c - 1) Then
+        IFS = arguments(c)
+    Exit Function
+End If
+c = c + 2
+Next a
+IFS = CVErr(xlErrNA)
+End Function
+Function SWITCH(arg As String, ParamArray arguments() As Variant)
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+'SWITCH ( Value , match_value1 , return_value1 , [match_value2 , return_value2 ..], [optional] defaut_return_value )
+Dim j As Long
+Dim a As Long
+Dim c As Integer
+Dim k As Integer
+j = UBound(arguments)
+k = WorksheetFunction.RoundDown((j + 1) / 2, 0)
+c = 1
+For a = 1 To k
+    If [arg] = arguments(c - 1) Then
+        SWITCH = arguments(c)
+    Exit Function
+End If
+c = c + 2
+Next a
+If WorksheetFunction.IsOdd(j + 1) And IsEmpty(SWITCH) Then
+    SWITCH = arguments(j)
+Else
+    SWITCH = CVErr(xlErrNA)
+End If
+End Function
+Function MAXIFS(rng As Range, ParamArray arguments() As Variant) As Double
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+'MAXIFS ( value_range , criteria_range1 , criteria1 , [critera_range2 , criteria2]...)
+Dim uB As Long, arg As Long, args As Long, cell As Range
+Dim i As Long, irc As Long, l As Long, ac As Long
+Dim booleanArray() As Boolean, maxifStr() As Double
+On Error Resume Next
+i = rng.Count - 1
+ReDim booleanArray(i)
+For l = 0 To i 'initialize array to TRUE
+    booleanArray(l) = True
+Next
+uB = UBound(arguments)
+args = uB - 1
+For arg = 0 To args Step 2 'set the boolean map for matching criteria across all criteria
+l = 0
+    For Each cell In arguments(arg)
+    If booleanArray(l) = True Then
+        If TypeName(cell.Value2) = "Double" Then
+            If TypeName(arguments(arg + 1)) = "String" Then
+                If Not Evaluate(cell.Value2 & arguments(arg + 1)) Then
+                    booleanArray(l) = False
+                End If
+            Else
+                If Not Evaluate(cell.Value = arguments(arg + 1)) Then
+                    booleanArray(l) = False
+                End If
+            End If
+        Else
+            If Not UCase(cell.Value) Like UCase(arguments(arg + 1)) Then
+                booleanArray(l) = False
+            End If
+        End If
+        If booleanArray(l) = False Then
+            irc = irc + 1
+        End If
+    End If
+    l = l + 1
+    Next
+Next
+ReDim maxifStr(UBound(booleanArray) - irc) 'initialize array for function arguments
+ac = 0
+For arg = 0 To i 'use boolean map to build array for max values
+    If booleanArray(arg) = True Then
+        maxifStr(ac) = rng(arg + 1).Value 'build the value array for MAX
+        ac = ac + 1
+    End If
+Next
+MAXIFS = WorksheetFunction.Max(maxifStr)
+End Function
+Function MINIFS(rng As Range, ParamArray arguments() As Variant) As Double
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+'MINIFS ( value_range , criteria_range1 , criteria1 , [critera_range2 , criteria2]...)
+Dim uB As Long, arg As Long, args As Long, cell As Range
+Dim i As Long, irc As Long, l As Long, ac As Long
+Dim booleanArray() As Boolean, minifStr() As Double
+On Error Resume Next
+i = rng.Count - 1
+ReDim booleanArray(i)
+For l = 0 To i 'initialize array to TRUE
+    booleanArray(l) = True
+Next
+uB = UBound(arguments)
+args = uB - 1
+For arg = 0 To args Step 2 'set the boolean map for matching criteria across all criteria
+l = 0
+    For Each cell In arguments(arg)
+    If booleanArray(l) = True Then
+        If TypeName(cell.Value2) = "Double" Then
+            If TypeName(arguments(arg + 1)) = "String" Then
+                If Not Evaluate(cell.Value2 & arguments(arg + 1)) Then
+                    booleanArray(l) = False
+                End If
+            Else
+                If Not Evaluate(cell.Value = arguments(arg + 1)) Then
+                    booleanArray(l) = False
+                End If
+            End If
+        Else
+            If Not UCase(cell.Value) Like UCase(arguments(arg + 1)) Then
+                booleanArray(l) = False
+            End If
+        End If
+        If booleanArray(l) = False Then
+            irc = irc + 1
+        End If
+    End If
+    l = l + 1
+    Next
+Next
+ReDim minifStr(UBound(booleanArray) - irc) 'initialize array for function arguments
+ac = 0
+For arg = 0 To i 'use boolean map to build array for min values
+    If booleanArray(arg) = True Then
+        minifStr(ac) = rng(arg + 1).Value 'build the value array for MIN
+        ac = ac + 1
+    End If
+Next
+MINIFS = WorksheetFunction.Min(minifStr)
+End Function
+
+Function XLOOKUP(searchVal As Variant, searchArray As Range, returnArray As Variant, Optional notFound As Variant, Optional arg1 As Variant, Optional arg2 As Variant) As Variant 'v1.1
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+If IsMissing(arg1) Then arg1 = 0
+If IsMissing(arg2) Then arg2 = 0
+Dim rsult As Variant 'take the final result array
+Dim r2width As Integer: r2width = searchArray.Columns.Count
+Dim r3width As Integer: r3width = returnArray.Columns.Count
+Dim rtnHeaderColumn As Boolean: rtnHeaderColumn = r2width > 1
+If r2width > 1 And r2width <> r3width Then
+   XLOOKUP = CVErr(xlErrRef)
+   Exit Function
+End If
+Dim srchVal As Variant: srchVal = searchVal 'THE SEARCH VALUE
+Dim sIndex As Double: sIndex = searchArray.Row - 1 'the absolute return range address
+Dim n As Long 'for array loop
+'format the search value for wildcards or not
+If (arg1 <> 2 And VarType(searchVal) = vbString) Then srchVal = Replace(Replace(Replace(srchVal, "*", "~*"), "?", "~?"), "#", "~#") 'for wildcard switch, escape if not
+'-----------------------
+Dim srchType As String
+Dim matchArg As Integer
+Dim lDirection As String
+Dim nextSize As String
+On Error GoTo error_control
+Select Case arg1 'work out the return mechanism from parameters, index match or array loop
+    Case 0, 2
+        If arg2 = 0 Or arg2 = 1 Then
+            srchType = "im"
+            matchArg = 0
+        End If
+    Case 1, -1
+        nextSize = IIf(arg1 = -1, "s", "l") 'next smaller or larger
+        If arg2 = 0 Or arg2 = 1 Then
+            srchType = "lp"
+            lDirection = "forward"
+        End If
+End Select
+Select Case arg2 'get second parameter processing option
+    Case -1
+        srchType = "lp": lDirection = "reverse"
+    Case 2
+        srchType = "im": matchArg = 1
+    Case -2
+        srchType = "im": matchArg = -1
+End Select
+If srchType = "im" Then ' for index match return
+    If rtnHeaderColumn Then
+        Set XLOOKUP = returnArray.Columns(WorksheetFunction.Match(srchVal, searchArray, matchArg))
+    Else
+        Set XLOOKUP = returnArray.Rows(WorksheetFunction.Match(srchVal, searchArray, matchArg))
+    End If
+    Exit Function
+Else  'load search range into array for loop search
+    Dim vArr As Variant: vArr = IIf(rtnHeaderColumn, WorksheetFunction.Transpose(searchArray), searchArray) 'assign the lookup range to an array
+    Dim nsml As Variant: ' nsmal - next smallest value
+    Dim nlrg As Variant: ' nlrg - next largest value
+    Dim nStart As Double: nStart = IIf(lDirection = "forward", 1, UBound(vArr))
+    Dim nEnd As Double: nEnd = IIf(lDirection = "forward", UBound(vArr), 1)
+    Dim nStep As Integer: nStep = IIf(lDirection = "forward", 1, -1)
+        For n = nStart To nEnd Step nStep
+            If vArr(n, 1) Like srchVal Then Set XLOOKUP = IIf(rtnHeaderColumn, returnArray.Columns(n), returnArray.Rows(n)): Exit Function 'exact match found
+            If nsml < vArr(n, 1) And vArr(n, 1) < srchVal Then 'get next smallest
+                Set nsml = searchArray.Rows(n)
+            End If
+            If vArr(n, 1) > srchVal And (IsEmpty(nlrg) Or nlrg > vArr(n, 1)) Then 'get next largest
+                Set nlrg = IIf(rtnHeaderColumn, searchArray.Columns(n), searchArray.Rows(n))
+            End If
+        Next
+End If
+If arg1 = -1 Then 'next smallest
+    Set XLOOKUP = returnArray.Rows(nsml.Row - sIndex)
+ElseIf arg1 = 1 Then 'next largest
+    Set XLOOKUP = returnArray.Rows(nlrg.Row - sIndex)
+End If
+If Not IsEmpty(XLOOKUP) Then Exit Function
+error_control:
+If IsMissing(notFound) Then
+    XLOOKUP = CVErr(xlErrNA)
+Else
+    XLOOKUP = [notFound]
+End If
+End Function
+Function SEQUENCE(nRows As Double, Optional nCols As Variant, Optional nStart As Variant, Optional nStep As Variant) As Variant
+'SEQUENCE(rows,[columns],[start],[step])
+    'https://www.reddit.com/u/excelevator
+    'https://old.reddit.com/r/excelevator
+    'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+If IsMissing(nCols) Then nCols = 1
+If IsMissing(nStart) Then nStart = 1
+If IsMissing(nStep) Then nStep = 1
+Dim arrayVal() As Variant
+ReDim arrayVal(nRows - 1, nCols - 1)
+Dim i As Double, ii As Double
+For i = 0 To nRows - 1
+    For ii = 0 To nCols - 1
+        arrayVal(i, ii) = nStart
+        nStart = nStart + nStep
+    Next
+Next
+SEQUENCE = arrayVal
+End Function
+Function SEQUENCER(vxAxis As Variant, Optional arg1 As Variant, Optional arg2 As Variant, Optional arg3 As Variant, Optional arg4 As Variant) As Variant
+'SEQUENCER ( range           , [start] , [step] , [vertical] ) v1.3
+'SEQUENCER ( xCount , yCount , [start] , [step] , [vertical] )
+    'https://www.reddit.com/u/excelevator
+    'https://old.reddit.com/r/excelevator
+    'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Const vert As String = "v" ' vertical array value path flag
+Dim arrayVal() As Variant
+Dim xAxis As Double, yAxis As Double
+Dim nStart As Double, nStep As Double
+Dim uB As Integer, i As Double, ii As Double, iv As Double, isRng As Boolean, orientVert As Boolean
+Dim oLoop As Double, iLoop As Double, arRow As Integer, arCol As Integer
+If IsMissing(arg1) Then arg1 = ""
+If IsMissing(arg2) Then arg2 = ""
+If IsMissing(arg3) Then arg3 = ""
+If IsMissing(arg4) Then arg4 = ""
+Dim goVert As Boolean: goVert = InStr(LCase(arg1 & arg2 & arg3 & arg4), vert)
+If TypeName(vxAxis) = "Range" Then
+        Dim rc As Double: rc = vxAxis.Rows.Count
+        Dim cc As Double: cc = vxAxis.Columns.Count
+        If rc * cc > 1 Then isRng = True
+End If
+If isRng Then
+    xAxis = rc
+    yAxis = cc
+    If (arg1 = "" Or arg1 = LCase(vert)) Then nStart = 1 Else nStart = arg1
+    If (arg2 = "" Or arg2 = LCase(vert)) Then nStep = 1 Else nStep = arg2
+    If (arg3 = "" Or arg3 = LCase(vert)) Then arg2 = 1 Else nStep = arg2
+Else
+    xAxis = IIf(arg1 = "" Or arg1 = LCase(vert), 1, arg1)
+    yAxis = vxAxis
+    If (arg2 = "" Or arg2 = LCase(vert)) Then nStart = 1 Else nStart = arg2
+    If (arg3 = "" Or arg3 = LCase(vert)) Then nStep = 1 Else nStep = arg3
+End If
+ReDim arrayVal(xAxis - 1, yAxis - 1)
+oLoop = IIf(goVert, yAxis - 1, xAxis - 1)
+iLoop = IIf(goVert, xAxis - 1, yAxis - 1)
+For i = 0 To oLoop
+iv = 0
+    For ii = 0 To iLoop
+        If goVert Then
+            arrayVal(iv, i) = nStart
+        Else
+            arrayVal(i, ii) = nStart
+        End If
+        nStart = nStart + nStep
+        iv = iv + 1
+    Next
+Next
+SEQUENCER = arrayVal
+End Function
+Function COUNTUNIQUE(ParamArray arguments() As Variant) As Double
+'COUNTUNIQUE ( value/range/array , [value/range/array] ... ) v1.1
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+On Error Resume Next
+Dim i As Double, tName As String, uB As Integer, cell As Variant
+uB = UBound(arguments)
+Dim coll As Collection
+Dim cl As Long
+Set coll = New Collection
+On Error Resume Next
+For i = 0 To uB
+tName = TypeName(arguments(i))
+    If tName = "Variant()" Or tName = "Range" Then
+        For Each cell In arguments(i)
+            If cell <> "" Then coll.Add cell, CStr(cell)
+        Next
+    Else
+        If arguments(i) <> "" Then coll.Add arguments(i), CStr(arguments(i))
+    End If
+Next
+COUNTUNIQUE = coll.Count
+End Function
+Function days(done As Long, dtwo As Long)
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+Application.Volatile
+Dim rtn As Long
+rtn = dtwo - done
+days = rtn
+End Function
+Function IFVALUES(arg As String, ParamArray arguments() As Variant)
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+'IFVALUES ( arg , if_value , this_value , [if_value, this value]..)
+Dim j As Long
+Dim a As Long
+Dim c As Integer
+Dim k As Integer
+j = UBound(arguments)
+k = (j + 1) / 2
+c = 1
+If WorksheetFunction.IsOdd(j + 1) Then
+    GoTo Err_Handler
+End If
+For a = 1 To k
+    If [arg] = arguments(c - 1) Then
+        IFVALUES = arguments(c)
+    Exit Function
+End If
+c = c + 2
+Next a
+IFVALUES = [arg]
+Exit Function
+Err_Handler:
+IFVALUES = CVErr(xlErrValue)
+End Function
+ Function IsHyperlink(rng As Range)
+ If rng.Hyperlinks.Count = 0 Then
+     IsHyperlink = False
+ Else
+     IsHyperlink = True
+ End If
+ End Function
+ Function ISVISBLE(rng As Range, Optional hiddenCells As Boolean) As Variant
+'visible mask array
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+'ISVISBLE ( filtered_range , visible/hidden)
+Dim cell As Range
+Dim i As Long, l As Long: l = 0
+Dim booleanArray() As Boolean
+On Error Resume Next
+i = rng.Count - 1
+ReDim booleanArray(i)
+For Each cell In rng
+        If cell.Rows.Hidden Then
+            If hiddenCells Then
+                booleanArray(l) = True
+            End If
+        Else
+            If Not hiddenCells Then
+                booleanArray(l) = True
+            End If
+        End If
+    l = l + 1
+    Next
+ISVISBLE = WorksheetFunction.Transpose(booleanArray())
+End Function
+Function TXLOOKUP(sVal As Variant, tblRng As Variant, CRNG As Variant, rtnVals As Variant, Optional arg1 As Variant, Optional arg2 As Variant) As Range 'v1.06
+'TXLOOKUP ( value , table/range, search_col, return_values , [match_type] , [search_type])
+  'https://www.reddit.com/u/excelevator
+  'https://old.reddit.com/r/excelevator
+  'https://www.reddit.com/r/excel - for all your Spreadsheet questions!
+If IsMissing(arg1) Then arg1 = 0
+If IsMissing(arg2) Then arg2 = 0
+Dim rsult As Variant 'take the final result array
+Dim srchRng As Range 'the search column range
+Dim rtnRng As Range 'the return column range
+Dim srchVal As Variant: srchVal = sVal '.Value 'THE SEARCH VALUE
+Dim sIndex As Double: sIndex = tblRng.Row - 1 'the absolute return range address
+Dim n As Long 'for array loop
+'format the search value for wildcards or not
+If (arg1 <> 2 And VarType(sVal) = vbString) Then srchVal = Replace(Replace(Replace(srchVal, "*", "~*"), "?", "~?"), "#", "~#") 'for wildcard switch, escape if not
+'-----------------------
+Dim srchType As String
+Dim matchArg As Integer
+Dim lDirection As String
+Dim nextSize As String
+Select Case arg1 'work out the return mechanism from parameters, index match or array loop
+    Case 0, 2
+        If arg2 = 0 Or arg2 = 1 Then
+            srchType = "im"
+            matchArg = 0
+        End If
+    Case 1, -1
+        nextSize = IIf(arg1 = -1, "s", "l") 'next smaller or larger
+        If arg2 = 0 Or arg2 = 1 Then
+            srchType = "lp"
+            lDirection = "forward"
+        End If
+End Select
+Select Case arg2 'get second parameter processing option
+    Case -1
+        srchType = "lp": lDirection = "reverse"
+    Case 2
+        srchType = "im": matchArg = 1
+    Case -2
+        srchType = "im": matchArg = -1
+End Select
+'sort out search and return ranges
+Dim hdrRng As Range 'search range for header return column
+If tblRng.ListObject Is Nothing Then 'is it a table or a range
+    Set hdrRng = tblRng.Rows(1)
+    Set srchRng = tblRng.Columns(WorksheetFunction.Match(CRNG, hdrRng, 0)) 'set the search column range
+Else
+    Set hdrRng = tblRng.ListObject.HeaderRowRange
+    Set srchRng = tblRng.ListObject.ListColumns(WorksheetFunction.Match(CRNG, hdrRng, 0)).Range
+End If
+Set srchRng = srchRng.Resize(srchRng.Rows.Count - 1).Offset(1, 0) 'remove header from range
+'get column to search
+Dim rtnValsType As String: rtnValsType = TypeName(rtnVals)
+Select Case rtnValsType
+    Case "String"
+        If InStr(1, rtnVals, ":") Then
+            Dim args() As String, iSt As Double, iCd As Double, rsz As Double
+            args = Split(rtnVals, ":")
+            iSt = WorksheetFunction.Match(args(0), hdrRng, 0)
+            iCd = WorksheetFunction.Match(args(1), hdrRng, 0)
+            rsz = iCd - iSt + 1
+            Set rtnRng = tblRng.Columns(WorksheetFunction.Match(args(0), hdrRng, 0)).Resize(srchRng.Rows.Count, rsz)
+        Else
+            Set rtnRng = tblRng.Columns(WorksheetFunction.Match(rtnVals, hdrRng, 0)).Resize(srchRng.Rows.Count).Offset(1, 0)
+        End If
+    Case "Range"
+        If rtnVals.ListObject Is Nothing And rtnVals.Count = 1 Then 'set the return range
+            Set rtnRng = tblRng.Columns(WorksheetFunction.Match(rtnVals, hdrRng, 0))
+            If tblRng.ListObject Is Nothing Then Set rtnRng = rtnRng.Resize(srchRng.Rows.Count).Offset(1, 0)
+        ElseIf rtnVals.Rows.Count <> tblRng.Rows.Count Then 'assume header name only reference
+            Set rtnRng = rtnVals.Resize(srchRng.Rows.Count, rtnVals.Columns.Count)
+            Set rtnRng = rtnRng.Resize(srchRng.Rows.Count).Offset(1, 0)
+        Else
+            If Not rtnVals.ListObject Is Nothing Then
+                Set rtnRng = rtnVals.Resize(srchRng.Rows.Count, rtnVals.Columns.Count)
+            Else
+                Set rtnRng = rtnVals ' return the table
+                Set rtnRng = rtnRng.Resize(srchRng.Rows.Count).Offset(1, 0)
+            End If
+
+        End If
+End Select
+'start the searches
+If srchType = "im" Then ' for index match return
+    Set TXLOOKUP = rtnRng.Rows(WorksheetFunction.Match(srchVal, srchRng, matchArg))
+    Exit Function
+Else  'load search range into array for loop search
+    Dim vArr As Variant: vArr = srchRng 'assign the lookup range to an array
+    Dim nsml As Variant: ' nsmal - next smallest value
+    Dim nlrg As Variant: ' nlrg - next largest value
+    Dim nStart As Double: nStart = IIf(lDirection = "forward", 1, UBound(vArr))
+    Dim nEnd As Double: nEnd = IIf(lDirection = "forward", UBound(vArr), 1)
+    Dim nStep As Integer: nStep = IIf(lDirection = "forward", 1, -1)
+        For n = nStart To nEnd Step nStep
+            If vArr(n, 1) Like srchVal Then Set TXLOOKUP = rtnRng.Rows(n): Exit Function  'exact match found
+            If nsml < vArr(n, 1) And vArr(n, 1) < srchVal Then 'get next smallest
+                Set nsml = srchRng.Rows(n)
+            End If
+            If vArr(n, 1) > srchVal And (IsEmpty(nlrg) Or nlrg > vArr(n, 1)) Then 'get next largest
+                Set nlrg = srchRng.Rows(n)
+            End If
+        Next
+End If
+If arg1 = -1 Then 'next smallest
+    Set TXLOOKUP = rtnRng.Rows(nsml.Row - sIndex)
+ElseIf arg1 = 1 Then 'next largest
+    Set TXLOOKUP = rtnRng.Rows(nlrg.Row - sIndex)
+End If
+End Function
+Function UNIQUE(rng As Variant, Optional cnt As Boolean) As Variant
+'UNIQUE ( Range , [optional] 0 array or 1 count of unique ) v1.2.3
+'http://reddit.com/u/excelevator
+'http://reddit.com/r/excelevator
+If IsEmpty(cnt) Then cnt = 0 '0 return array, 1 return count of unique values
+Dim i As Long, ii As Long, colCnt As Long, cell As Range
+Dim tName As String: tName = TypeName(rng)
+If tName = "Variant()" Then
+    i = UBound(rng)
+ElseIf tName = "String" Then
+    rng = Split(rng, ",")
+    i = UBound(rng)
+    tName = TypeName(rng) 'it will change to "String()"
+End If
+Dim coll As Collection
+Dim cl As Long
+Set coll = New Collection
+On Error Resume Next
+If tName = "Range" Then
+    For Each cell In rng
+        coll.Add Trim(cell), Trim(cell)
+    Next
+ElseIf tName = "Variant()" Or tName = "String()" Then
+    For ii = IIf(tName = "String()", 0, 1) To i
+        coll.Add Trim(rng(ii)), Trim(rng(ii))
+        coll.Add Trim(rng(ii, 1)), Trim(rng(ii, 1))
+    Next
+End If
+colCnt = coll.Count
+If cnt Then
+    UNIQUE = colCnt
+Else
+    Dim lp As Long
+    Dim rtnArray() As Variant
+    ReDim rtnArray(colCnt - 1)
+    For lp = 1 To colCnt
+        rtnArray(lp - 1) = coll.Item(lp)
+    Next
+    UNIQUE = WorksheetFunction.Transpose(rtnArray)
+End If
+End Function
+Function FORMULATEXT(rng As Range)
+    FORMULATEXT = rng.Formula
+End Function
+Public Function SPELLNUMBERREVERSE( _
+    ByVal sMyTextNumber As Variant) As Variant
+
+Dim odictionary As Scripting.Dictionary
+Dim sValidation As String
+Dim arwords As Variant
+Dim slastword As String
+Dim lmultiple As Long
+Dim lngRes As Long
+
+    On Error GoTo ErrorHandler
+    Set odictionary = StringToLong_Dictionary
+    lmultiple = 1
+    sMyTextNumber = VBA.LCase(sMyTextNumber)
+    
+    If (sMyTextNumber Like "*,*") Then
+        sMyTextNumber = Replace(sMyTextNumber, ",", "")
+    End If
+    
+    sValidation = StringToLong_Validation(odictionary, sMyTextNumber)
+    If (Len(sValidation) > 0) Then
+        SPELLNUMBERREVERSE = sValidation
+        Exit Function
+    End If
+    
+    If (odictionary.Exists(sMyTextNumber) = True) Then
+        lngRes = odictionary.Item(sMyTextNumber)
+    Else
+        arwords = VBA.Split(sMyTextNumber, " ")
+        Do While VBA.Len(sMyTextNumber) > 0
+            slastword = arwords(UBound(arwords))
+            Select Case slastword
+                Case "and":
+                Case "hundred":
+                                 If (lmultiple = 1000) Then
+                                     lmultiple = 100000
+                                 Else: lmultiple = 100
+                                 End If
+                Case "thousand": lmultiple = 1000
+                Case Else:
+                    If (odictionary.Exists(slastword) = True) Then
+                        lngRes = lngRes + (odictionary.Item(slastword) * lmultiple)
+                    End If
+            End Select
+            sMyTextNumber = VBA.Trim(VBA.Left(sMyTextNumber, VBA.InStrRev(sMyTextNumber, " ")))
+            arwords = VBA.Split(sMyTextNumber, " ")
+        Loop
+    End If
+
+    SPELLNUMBERREVERSE = lngRes
+    Exit Function
+    
+ErrorHandler:
+    SPELLNUMBERREVERSE = "Error"
+End Function
+
+Private Function StringToLong_Validation( _
+    ByVal objDictionary As Scripting.Dictionary, _
+    ByVal sMyTextNumber As Variant) As String
+    
+Dim sError As String
+Dim arwords As Variant
+Dim lcount As Long
+Dim ltemp As Long
+
+    On Error GoTo ErrorHandler
+    StringToLong_Validation = False
+        
+    arwords = VBA.Split(sMyTextNumber, " ")
+    For lcount = 0 To UBound(arwords)
+        If objDictionary.Exists(arwords(lcount)) = False Then
+            sError = "Spelling mistake"
+            StringToLong_Validation = sError
+            Exit Function
+        End If
+    Next lcount
+        
+    If (VBA.InStr(1, sMyTextNumber, "thousand") > 0) Then
+        If (VBA.Right(sMyTextNumber, 8) <> "thousand") Then
+        
+            If (VBA.InStr(InStr(1, sMyTextNumber, "thousand"), sMyTextNumber, "hundred") > 0) Then
+                If (VBA.InStr(1, sMyTextNumber, "thousand and") > 0) Then
+                    sError = "Invalid 'and' after the thousand"
+                    StringToLong_Validation = sError
+                    Exit Function
+                End If
+            Else
+                If (VBA.InStr(1, sMyTextNumber, "thousand and") = 0) Then
+                    sError = "Missing 'and' after the thousand"
+                    StringToLong_Validation = sError
+                    Exit Function
+                End If
+            End If
+        End If
+    End If
+    
+    If (VBA.InStr(1, sMyTextNumber, "hundred") > 0) Then
+        If (VBA.Right(sMyTextNumber, 7) <> "hundred") Then
+            If ((VBA.InStr(1, sMyTextNumber, "hundred and") = 0) And _
+                (VBA.InStr(1, sMyTextNumber, "hundred thousand") = 0)) Then
+                sError = "Missing 'and' after the hundred"
+                StringToLong_Validation = sError
+                Exit Function
+            End If
+        End If
+        
+        If (VBA.InStr(1, sMyTextNumber, "thousand") > 0) Then
+            sMyTextNumber = VBA.Mid(sMyTextNumber, VBA.InStr(1, sMyTextNumber, "thousand") + 9)
+        End If
+        
+        If (VBA.InStr(1, sMyTextNumber, "hundred") > 0) Then
+            ltemp = VBA.InStr(1, sMyTextNumber, "hundred")
+            sMyTextNumber = VBA.Left(sMyTextNumber, ltemp + 6)
+            
+            If ((sMyTextNumber <> "one hundred") And _
+                (sMyTextNumber <> "two hundred") And _
+                (sMyTextNumber <> "three hundred") And _
+                (sMyTextNumber <> "four hundred") And _
+                (sMyTextNumber <> "five hundred") And _
+                (sMyTextNumber <> "six hundred") And _
+                (sMyTextNumber <> "seven hundred") And _
+                (sMyTextNumber <> "eight hundred") And _
+                (sMyTextNumber <> "nine hundred")) Then
+                
+                sError = "You cannot have more than 9 hundreds"
+                StringToLong_Validation = sError
+                Exit Function
+            End If
+        End If
+    End If
+    StringToLong_Validation = ""
+    Exit Function
+    
+ErrorHandler:
+    StringToLong_Validation = sError
+End Function
+
+Private Function StringToLong_Dictionary() As Scripting.Dictionary
+Dim objDictionary As Scripting.Dictionary
+    Set objDictionary = New Scripting.Dictionary
+    objDictionary.Add "one", 1
+    objDictionary.Add "two", 2
+    objDictionary.Add "three", 3
+    objDictionary.Add "four", 4
+    objDictionary.Add "five", 5
+    objDictionary.Add "six", 6
+    objDictionary.Add "seven", 7
+    objDictionary.Add "eight", 8
+    objDictionary.Add "nine", 9
+    objDictionary.Add "ten", 10
+    objDictionary.Add "eleven", 11
+    objDictionary.Add "twelve", 12
+    objDictionary.Add "thirteen", 13
+    objDictionary.Add "fourteen", 14
+    objDictionary.Add "fifteen", 15
+    objDictionary.Add "sixteen", 16
+    objDictionary.Add "seventeen", 17
+    objDictionary.Add "eighteen", 18
+    objDictionary.Add "nineteen", 19
+    objDictionary.Add "twenty", 20
+    objDictionary.Add "thirty", 30
+    objDictionary.Add "forty", 40
+    objDictionary.Add "fifty", 50
+    objDictionary.Add "sixty", 60
+    objDictionary.Add "seventy", 70
+    objDictionary.Add "eighty", 80
+    objDictionary.Add "ninety", 90
+    
+    objDictionary.Add "hundred", -1
+    objDictionary.Add "thousand", -1
+    objDictionary.Add "and", -1
+    Set StringToLong_Dictionary = objDictionary
+End Function
+
